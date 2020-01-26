@@ -1,3 +1,39 @@
-from django.test import TestCase
+from django.urls import reverse
+from rest_framework.test import APITestCase, APIClient
+from rest_framework.views import status
+from .models import Song
+from .serializers import SongSerializer
 
-# Create your tests here.
+# tests for views
+
+
+class BaseViewTest(APITestCase):
+    client = APIClient()
+
+    @staticmethod
+    def create_song(title="", artist=""):
+        if title != "" and artist != "":
+            Song.objects.create(title=title, artist=artist)
+
+    def setUp(self):
+        # add test data
+        self.create_song("hesham", "sayed")
+        self.create_song("sayed", "hesham")
+
+
+class GetAllSongsTest(BaseViewTest):
+
+    def test_get_all_songs(self):
+        """
+        This test ensures that all songs added in the setUp method
+        exist when we make a GET request to the songs/ endpoint
+        """
+        # hit the API endpoint
+        response = self.client.get(
+            reverse("songs-all", kwargs={"version": "v1"})
+        )
+        # fetch the data from db
+        expected_data = Song.objects.all()
+        serialized = SongSerializer(expected_data, many=True)
+        self.assertEqual(response.data, serialized.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
